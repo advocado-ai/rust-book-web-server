@@ -1,5 +1,6 @@
 use std::{
     fs,
+    thread,
     io::{BufReader, prelude::*},
     net::{TcpListener, TcpStream},
 };
@@ -10,7 +11,9 @@ fn main() {
     for stream in listener.incoming(){
         let stream = stream.expect("failed to establish connection");
 
-        handle_connection(stream);
+        thread::spawn(||{
+            handle_connection(stream);
+        }); 
     }
 
 }
