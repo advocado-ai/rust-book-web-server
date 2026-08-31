@@ -22,9 +22,10 @@ enum Request{
 }
 
 impl Request{
-    fn request_path(&self) -> &'static str{
+    fn request_path(&self) -> String{
         match self{
-            Request::GetIndex => "GET / HTTP/1.1",
+            Request::GetIndex => "GET / HTTP/1.1".to_string(),
+            Request::Unknown(path)=> path.to_string(),
         }
     }
 }
