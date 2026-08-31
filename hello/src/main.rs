@@ -2,6 +2,8 @@ use std::{
     fs,
     io::{BufReader, prelude::*},
     net::{TcpListener, TcpStream},
+    thread,
+    time::Duration,
 };
 
 fn main() {
@@ -17,6 +19,7 @@ fn main() {
 
 enum Request{
     GetIndex,
+    GetSleep,
     Unknown(String),
 
 }
@@ -25,6 +28,7 @@ impl Request{
     fn request_path(&self) -> String{
         match self{
             Request::GetIndex => "GET / HTTP/1.1".to_string(),
+            Request::GetSleep => "GET /sleep HTTP/1.1".to_string(),
             Request::Unknown(path)=> path.to_string(),
         }
     }
@@ -54,11 +58,15 @@ fn handle_connection(mut stream: TcpStream){
     let buf_reader = BufReader::new(&stream);
     let request_line = buf_reader.lines().next().unwrap().unwrap();
 
-    let (status_line, filename) = if request_line == Request::GetIndex.request_path() {
-        (Response::Ok.status_line(), Response::Ok.filename())
-    }else{
-        (Response::NotFound.status_line(), Response::NotFound.filename())
+    let (status_line, filename) = match &request_line[..] {
+        s if s == Request::GetIndex.request_path() => (Response::Ok.status_line(), Response::Ok.filename()),
+        s if s == Request::GetSleep.request_path() => {
+            thread::sleep(Duration::from_secs(5));
+            (Response::Ok.status_line(), Response::Ok.filename())
+        },
+        _ => (Response::NotFound.status_line(), Response::NotFound.filename()),
     };
+
 
     let contents = fs::read_to_string(filename).expect("failed to read html");
 
@@ -67,8 +75,5 @@ fn handle_connection(mut stream: TcpStream){
     let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
 
     stream.write_all(response.as_bytes()).expect("failed to send response");
-
-
-
    
 }
