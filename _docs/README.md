@@ -6,6 +6,8 @@ project (chapter 21: building a single-threaded, then multithreaded, then
 gracefully-shutting-down web server).
 
 - [Project roadmap](project-roadmap.md)
+- [TODO](todo.md) — smaller loose ends noticed while working through the
+  book chapter itself
 
 The book's version lives in the main learning repo at
 `rust-programming-language-book/capstone_webserver/` and is left as-is as a
