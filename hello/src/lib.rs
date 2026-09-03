@@ -31,11 +31,13 @@ pub enum WorkerError{
 pub struct ThreadPool{
     //threads: Vec<thread::JoinHandle<()>>,
     workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
+    sender: Option<mpsc::Sender<Job>>,
 }
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
+        //take the tx inside the Option and drop it, closes the channel 
+        drop(self.sender.take());
         for worker in self.workers.drain(..){
             println!("Shutting down worker {}", worker.id);
 
@@ -71,7 +73,10 @@ impl ThreadPool{
             workers.push(worker);
         }
 
-        ThreadPool{ workers: workers, sender: tx }
+        ThreadPool{ 
+            workers: workers, 
+            sender: Some(tx) 
+        }
     }
 
     pub fn execute<F>(&self, f:F)
@@ -81,7 +86,7 @@ impl ThreadPool{
             //create a box with closure
             let job = Box::new(f);
             //mpsc send so receivers can receive
-            self.sender.send(job).expect("failed to send job");
+            self.sender.as_ref().expect("sender is None, execute called after ThreadPool was dropped/shutting down").send(job).expect("failed to send job: receiver was dropped because sender was dropped");
         }
 }
 
@@ -95,16 +100,25 @@ struct Worker{
 impl Worker{
     ///receives an Arc::clone of rx receiver
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker{
+        
         let handler = thread::spawn(move ||{//thread code
             //use loop not while let as while let will not drop rhs values so holds on to the mutex lock for duration of job so other workers cannot receive jobs. 
             loop {
                 //recv blocks so if there is no job yet, current thread will wait until a job becomes available
-             
-                let job = receiver.lock().expect("rx in worker's closure couldn't acquire mutex lock").recv().expect("couldn't receive job inside Arc::mutex(rx)");
+                let message = receiver.lock().expect("Option wrapping rx could not acquire mutex lock").recv();
 
-                println!("Worker {id} got a job; executing.");
+                match message {
+                    Ok(job) => {
+                        println!("Worker {id} got a job; executing.");
 
-                job();
+                        job();
+                    }
+                    Err(_) => {
+                        println!("Worker {id} disconnected; shutting down.");
+                        break;
+                    }
+                }
+
             }
         });
 
