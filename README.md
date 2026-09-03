@@ -42,8 +42,9 @@ curl http://127.0.0.1:7878/anything-else   # 404
   - `src/lib.rs` — `ThreadPool` and `Worker`.
 - [_docs/](_docs/) — project notes:
   - [project-roadmap.md](_docs/project-roadmap.md) — where this goes after
-    the book: real HTTP parsing, routing, JSON, config, logging, tests, and
-    eventually an async/Tokio rewrite.
+    the book: real HTTP parsing, routing, structured errors, tests. Stays
+    synchronous and `std`-only on purpose — Tokio/Axum work happens in the
+    separate `rust-elt-api` project instead.
   - [todo.md](_docs/todo.md) — smaller loose ends noticed along the way.
 
 ## Status

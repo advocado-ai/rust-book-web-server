@@ -6,13 +6,31 @@ The book's final project stops at: single-threaded server → thread pool →
 graceful shutdown, using only `std`. That's a great tour of ownership,
 threads, `Arc`/`Mutex`/`mpsc`, and `Drop` — but the server itself is
 deliberately minimal (one hardcoded route, string-matching instead of real
-HTTP parsing, `.unwrap()` everywhere). This roadmap picks up from there in
-two phases: first deepen the synchronous version into something closer to a
-real (if small) HTTP server, then do a second pass rewriting it on async/Tokio.
+HTTP parsing, `.unwrap()` everywhere). This roadmap picks up from there with
+one phase: deepen the synchronous version into something closer to a real
+(if small) HTTP server, using only `std` throughout.
 
-Phase 1 stays synchronous on purpose — same threading model as the book
-(`std::thread`, `ThreadPool`), so the jump in complexity is in HTTP handling
-and API design, not a new concurrency paradigm at the same time.
+Staying synchronous is deliberate — same threading model as the book
+(`std::thread`, `ThreadPool`), so the focus stays on HTTP handling and API
+design, not a new concurrency paradigm at the same time.
+
+**Scoping decision (2026-09-03):** not doing the full Phase 1 list. Doing
+the concept-dense items only — #1 (real parsing), #2 (routing), #4
+(structured errors), and probably #9 (keep-alive) — since those teach Rust
+fundamentals (parsing, `Result`/`?`, custom error enums, protocol state)
+worth having solid on their own merits. Deferring #5 (JSON/serde), #6
+(config/clap), and #7 (logging) — those are mostly "learn a popular crate's
+API" rather than "learn a Rust concept." #3 (static file serving w/
+traversal protection), #8 (tests), and #10 (signal-based shutdown) are still
+worth doing if time allows, lower priority than 1/2/4/9.
+
+**No Phase 2 / async rewrite here (2026-09-03):** this repo stays `std`-only
+and synchronous, full stop — Tokio/Axum learning happens in the separate
+`rust-elt-api` project instead (a dedicated `elt-core` domain crate +
+`api` Axum adapter, see its own `_docs/project-roadmap.md`), which also owns
+the deployment work. Rewriting *this* server on Tokio would have been
+redundant with that project's Part 2. This repo's scope ends once the
+items above are done.
 
 ## Phase 1 — Sync server, closer to real HTTP
 
@@ -57,31 +75,6 @@ and API design, not a new concurrency paradigm at the same time.
     signal-based trigger that stops accepting new connections and lets
     in-flight ones finish before exiting.
 
-## Phase 2 — Async rewrite
-
-Once Phase 1 feels solid, redo the server on `tokio` (+ likely `axum` or
-`hyper` directly, depending on how much you want the framework to do for
-you vs. hand-roll). This ties directly into the fast-track plan's Step 4
-(async/await, futures, Tokio internals) and the existing
-`17_async_await_futures_streams/` work in the main learning repo.
-
-1. Swap `std::net::TcpListener`/`TcpStream` for `tokio::net` equivalents;
-   understand why `.await` replaces the thread-per-connection model.
-2. Replace the hand-rolled `ThreadPool` with Tokio's task scheduler — notice
-   what disappears (no more manual `Worker`/`mpsc`/`Arc<Mutex<Receiver>>`)
-   and think through *why* it disappears (cooperative task scheduling on a
-   thread pool Tokio manages, vs. OS threads you manage yourself).
-3. Revisit graceful shutdown using `tokio::signal` and cancellation
-   (`tokio_util::sync::CancellationToken` or a broadcast channel) instead of
-   `Drop`.
-4. If using `axum` or `hyper`: compare how much of Phase 1's hand-rolled
-   parsing/routing/error-handling work a real framework replaces, and be
-   able to explain *why* each piece is no longer needed — same "intermediate
-   before idiomatic" habit from Rustlings, now at the framework level.
-5. Load-test the async version against the Phase 1 sync version (e.g. with
-   `wrk` or `oha`) to see the concurrency difference concretely, not just
-   read about it.
-
 ## Rust practice targets
 
 - Real-world error handling (`thiserror`/`anyhow`, `Result` chains, `?`)
@@ -91,19 +84,14 @@ you vs. hand-roll). This ties directly into the fast-track plan's Step 4
   response — who owns what, and when it's safe to borrow vs. must own)
 - `Arc`/`Mutex` for any real shared state (e.g. a request counter, an
   in-memory cache) beyond the book's channel-only example
-- Async/await, `Future`, `Pin` basics (Phase 2)
 - Integration testing a network service, not just pure functions
 
 ## Suggested dependencies
 
-- `serde` / `serde_json` — JSON bodies
-- `clap` — CLI configuration
-- `log` + `env_logger` — logging
 - `thiserror` — library-side error types
-- `ctrlc` — signal-based graceful shutdown (Phase 1)
-- `tokio`, `axum` or `hyper` — Phase 2 async rewrite
-- `wrk` or `oha` (external tools, not crates) — load testing to compare
-  Phase 1 vs. Phase 2
+- `ctrlc` — signal-based graceful shutdown, if #10 gets picked up
+- (JSON/`serde`, CLI config/`clap`, and logging/`log` deliberately not
+  pulled in here — see scoping decision above)
 
 ## Showcase checklist
 
@@ -112,5 +100,3 @@ you vs. hand-roll). This ties directly into the fast-track plan's Step 4
 - `cargo test` passes (unit + integration)
 - README includes runnable examples (`curl` commands against each route)
 - Error behavior is documented (what each failure mode returns and why)
-- Phase 2 section notes what changed vs. Phase 1 and why, not just that it
-  was rewritten
