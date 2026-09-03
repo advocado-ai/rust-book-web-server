@@ -34,6 +34,16 @@ pub struct ThreadPool{
     sender: mpsc::Sender<Job>,
 }
 
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        for worker in self.workers.drain(..){
+            println!("Shutting down worker {}", worker.id);
+
+            worker.handle.join().expect(" thread on drop");
+        }
+    }
+}
+
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
 impl ThreadPool{
