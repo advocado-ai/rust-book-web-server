@@ -125,3 +125,47 @@ impl Worker{
         Worker{id: id, handle: handler}
     } 
 }
+
+pub fn convert_file_request_to_bufreader_requet(raw_request_line:String)->String{
+
+    let method_path_version_line= match raw_request_line.lines().next(){
+        Some(first_line) => first_line.to_string().trim_end_matches("\r\n").to_string(),
+        None => "couldn't parse first line of file request".to_string()
+    };
+    
+    method_path_version_line
+}
+
+
+
+pub fn parse_request(request_str: String) -> Vec<String>{
+    //break apart into http request type
+    // http version
+    // Host: 127.0.0.1:7878
+    // Connection: close
+
+    let split_request_str = request_str.split(' ').map(|s| s.to_string()).collect();
+
+    split_request_str
+}
+
+#[cfg (test)]
+mod tests{
+    use super::*;
+    use std::{convert, fs};
+
+    #[test]
+    fn test_parse_request(){
+        let request_line = fs::read_to_string("/home/nginx/Documents/coding/rust-projects/rust-book-web-server/hello/tests/fixtures/happy_path.txt").expect("couldn't read happy path txt to string");
+
+        let request_first_line_string = convert_file_request_to_bufreader_requet(request_line);
+
+        let res = parse_request(request_first_line_string);
+
+        //println!("\n\nRESULTS HERE: {:?}\n\n", res);
+        assert_eq!(res, vec!["GET".to_string(), "/".to_string(), "HTTP/1.1".to_string()]);
+
+
+
+    }
+}
