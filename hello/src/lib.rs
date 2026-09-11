@@ -158,45 +158,33 @@ pub fn parse_request_line(request_str: String) -> Vec<String>{
 pub fn collect_headers(raw_request_line:String)-> HashMap<String, String>{
     //collect headers using take_while line is not empty, collect all until blank line 
 
-    //throw away first line
-    let _ = raw_request_line.lines().next();
 
-    //collect the rest into a hashmap
-    let mut header_lines = Vec::new();
+    //let header_lines: Vec<String> = raw_request_line.lines().skip(1).take_while(|line| !line.is_empty()).map(|s| s.to_string()).collect();
 
     //each line gets helper called to parse string into hashmap to insert into this outer parent hashmap
-    header_lines = raw_request_line.lines().take_while(|line| ! line.is_empty()).collect();
+    let header_lines: Vec<String> = raw_request_line.lines().skip(1).take_while(|line| ! line.is_empty()).map(|s|s.to_string()).collect();
     
-    header_lines.into_iter().map(|line|parse_header_line(line.trim().to_string()));
+    let header_kv_tuples: Vec<(String, String)> = header_lines.into_iter().map(|header_line|parse_header_line(header_line.trim().to_string())).collect();
 
     let mut headers_hashmap = HashMap::<String,String>::new();
 
-    header_lines.into_iter().map(|k,v|headers_hashmap.insert(k,v));
+    header_kv_tuples.into_iter().for_each(|(k,v)|{headers_hashmap.insert(k,v);});
 
     headers_hashmap
 
 }
 
-pub fn parse_header_line(header_line: String)-> HashMap<String, String>{
-    //parse each key value pair header line string into a hashmap k:v 
-    let mut split_header_line = header_line.split(':');
-
-    let mut single_hashmap = HashMap::<String, String>::new();
-
-    let header_key = match split_header_line.next(){
-        Some(hk) => hk.to_string(),
-        None =>  "no header".to_string(),
+pub fn parse_header_line(header_line: String)-> (String, String){
+    //parse each key value pair header line string into a tuple pair k,v
+    let (key_ref, value_ref) = match header_line.split_once(':'){
+        Some(tuple_of_str) => tuple_of_str,
+        None => ("can't split header line", "can't split header line"),
     };
 
-    let header_value = match split_header_line.next(){
-        Some(hv) => hv.to_string(),
-        None => "no value".to_string(),
-    };
+    let header_key = key_ref.trim().to_string(); 
+    let header_value = value_ref.trim().to_string(); 
 
-    single_hashmap.insert(header_key, header_value);
-
-    single_hashmap
-
+    (header_key, header_value)
 
 }
 
