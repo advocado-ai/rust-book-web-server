@@ -44,6 +44,15 @@ deliberately; make sure your editor doesn't silently convert them to `\n`.)
   before the connection is closed by the client. Tests what happens when
   `take_while(|line| !line.is_empty())`-style header reading never finds
   its stop condition.
+- `many_headers.txt` — a valid request line plus 7 realistic headers
+  (`Host`, `User-Agent`, `Accept`, `Accept-Language`, `Accept-Encoding`,
+  `Connection`, `Cache-Control`). Not yet exercised by any test — the
+  request-line parser (tiers 1/2) only looks at line 1, so this fixture is
+  currently indistinguishable from `happy_path.txt` to that code. It's here
+  for when a header-collecting function is built (a `take_while`-based
+  "read lines until blank" tier, separate from the fixed-3-field request
+  line parser) — that's the function whose correctness actually depends on
+  handling an arbitrary *number* of header lines, not just one or two.
 
 ## How to use these
 
