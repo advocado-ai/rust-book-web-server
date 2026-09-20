@@ -168,11 +168,11 @@ pub fn parse_request_line(request_line: &str) -> Option<(String, String, String)
     let mut parts = request_line.split(' ');
     let (Some(method), Some(path), Some(version), None) = (parts.next(), parts.next(), parts.next(), parts.next())
     else{
-        return None;
+        return None; // 400 error
     };
 
     if method.is_empty() || path.is_empty() || version.is_empty(){
-        return None;
+        return None; // 400 error
     }
 
     Some((method.to_string(), path.to_string(), version.to_string()))

@@ -5,9 +5,12 @@ use std::{
     net::{TcpListener, TcpStream},
 };
 
-use hello::{ThreadPool, parse_request_line};
-
- 
+use hello::{ThreadPool, 
+    collect_request_line, 
+    parse_request_line, 
+    collect_headers,
+    parse_header_line,
+};
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").expect("failed to bind to 127.0.0.1:7878");
@@ -62,16 +65,46 @@ impl Response{
     }
 }
 
+// closure for threads to run
 fn handle_connection(mut stream: TcpStream){
     let buf_reader = BufReader::new(&stream);
 
-    //todo: nested match stmts
-    let request_line = buf_reader.lines().next().unwrap().unwrap();
+    // FIXME: outer None means client connected and sent nothing, inner Err means an I/O failure: Option<Result<String, io::Error>>
+    //let request_line = buf_reader.lines().next().unwrap().unwrap();
 
-    //call parse_request 
+    let request_line = match buf_reader.lines().next(){
+        //match outer Option
+        Some(result_req_line) => {
+            // match inner Result
+            match result_req_line{
+                Ok(req_line) => req_line,
+                Err(e) => return, //I/O failure
+            }
+        }
+        None => return, //client sent nothing
+    };
+
+    // TODO: call collect_request_line
+    //  should be result throw error and return?
+    let request_line_str = match collect_request_line(&request_line){
+        Some(well_formed_request_line) => well_formed_request_line,
+        None => "eroor, first line / request line".to_string(),
+
+    };
+
+    //if None, 400 error page
+    match parse_request_line(&request_line_str){
+        Some((method, path, version)) => {
+            if method == "GET" && path == "/"{
+                (Response::Ok.status_line(), Response::Ok.filename())
+            }else if method != "GET"{
+                
+            }
+        None 
+    }
+
+
     //let status_line = parse_request(request_line);
-
-
     let (status_line, filename) = if request_line == Request::GetIndex.request_path() {
         (Response::Ok.status_line(), Response::Ok.filename())
     }else{
