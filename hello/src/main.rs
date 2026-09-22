@@ -21,7 +21,7 @@ fn main() {
 
     let pool = ThreadPool::new(4);
 
-    for stream in listener.incoming().take(2){
+    for stream in listener.incoming(){
         let stream = stream.expect("failed to establish connection");
 
         pool.execute(||{
@@ -76,12 +76,9 @@ fn handle_connection(mut stream: TcpStream){
     };
 
 
-    //let status_line = parse_request(request_line);
-    let (status_line, filename) = if request_line == Request::GetIndex.request_path() {
-        (Response::Ok_200.status_line(), Response::Ok_200.filename())
-    }else{
-        (Response::NotFound_404.status_line(), Response::NotFound_404.filename())
-    };
+    let status_line = resp.0;
+
+    let filename = resp.1;
 
     let contents = fs::read_to_string(filename).expect("failed to read html");
 
