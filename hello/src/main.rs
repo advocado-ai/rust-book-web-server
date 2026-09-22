@@ -53,13 +53,6 @@ fn handle_connection(mut stream: TcpStream){
         None => return, //client sent nothing
     };
 
-    // TODO: call collect_request_line
-    //  should be result throw error and return?
-    let request_line_str = match collect_request_line(&request_line){
-        Some(well_formed_request_line) => well_formed_request_line,
-        None => return //request_line missing method, path or version, cannot respond
-    };
-
     
     let resp: (&str, &str) = if let Some((method, path, _version)) = parse_request_line(&request_line){
         match (method.as_str(), path.as_str()){
