@@ -13,8 +13,7 @@ use hello::{ThreadPool,
 };
 
 //enum files
-use hello::response::Response;
-//use hello::request::Request;
+use hello::response::{Response, ResponseRoute};
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").expect("failed to bind to 127.0.0.1:7878");
@@ -61,21 +60,19 @@ fn handle_connection(mut stream: TcpStream){
         None => return //request_line missing method, path or version, cannot respond
     };
 
-    //resp: (status line, filename)
-    let resp: (&str, &str) = match parse_request_line(&request_line_str){
-        Some((method, path, _version)) => {
-            if method == "GET" && path == "/"{
-                (Response::Ok.status_line(), Response::Ok.filename())
-            }else if method != "GET"{
-                (Response::MethodNotAllowed.status_line(), Response::MethodNotAllowed.filename())
-            }else{
-                (Response::NotFound.status_line(), Response::NotFound.filename())
-            }
-        },
-        None => (Response::BadRequest.status_line(), Response::BadRequest.filename())
+    
+    let resp: (&str, &str) = if let Some((method, path, _version)) = parse_request_line(&request_line){
+        match (method.as_str(), path.as_str()){
+            ("GET", "/") => (Response::Ok.status_line(), ResponseRoute::Index.filename()),
+            ("GET", "/about") => (Response::Ok.status_line(), ResponseRoute::About.filename()) ,
+            (m,_) if m != "GET" => (Response::MethodNotAllowed.status_line(), ResponseRoute::MethodNotAllowed.filename()),
+            (_, _) => (Response::NotFound.status_line(), ResponseRoute::NotFound.filename()),
+        }
+    }else{
+        (Response::BadRequest.status_line(), ResponseRoute::BadRequest.filename())
     };
 
-
+    
     let status_line = resp.0;
 
     let filename = resp.1;

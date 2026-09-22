@@ -14,13 +14,25 @@ impl Response{
             Response::MethodNotAllowed => "HTTP/1.1 405 METHOD NOT ALLOWED",
         }
     }
+    
+}
+
+pub enum ResponseRoute{
+    Index,
+    About,
+    BadRequest,
+    NotFound,
+    MethodNotAllowed,
+}
+
+impl ResponseRoute{
     pub fn filename(&self) -> &'static str{
         match self{
-            Response::Ok=>"public/hello.html",
-            Response::BadRequest => "error_pages/400.html",
-            Response::NotFound => "error_pages/404.html",
-            Response::MethodNotAllowed => "error_pages/405.html",
-
+            ResponseRoute::Index => "public/hello.html",
+            ResponseRoute::About => "public/about.html",
+            ResponseRoute::BadRequest => "error_pages/400.html",
+            ResponseRoute::NotFound => "error_pages/404.html",
+            ResponseRoute::MethodNotAllowed => "error_pages/405.html",
         }
     }
 }
