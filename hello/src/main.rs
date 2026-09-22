@@ -14,7 +14,7 @@ use hello::{ThreadPool,
 
 //enum files
 use hello::response::Response;
-use hello::request::Request;
+//use hello::request::Request;
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").expect("failed to bind to 127.0.0.1:7878");
@@ -48,7 +48,7 @@ fn handle_connection(mut stream: TcpStream){
             // match inner Result
             match result_req_line{
                 Ok(req_line) => req_line,
-                Err(e) => return, //I/O failure
+                Err(_e) => return, //I/O failure
             }
         }
         None => return, //client sent nothing
@@ -63,16 +63,16 @@ fn handle_connection(mut stream: TcpStream){
 
     //resp: (status line, filename)
     let resp: (&str, &str) = match parse_request_line(&request_line_str){
-        Some((method, path, version)) => {
+        Some((method, path, _version)) => {
             if method == "GET" && path == "/"{
-                (Response::Ok_200.status_line(), Response::Ok_200.filename())
+                (Response::Ok.status_line(), Response::Ok.filename())
             }else if method != "GET"{
-                (Response::MethodNotAllowed_405.status_line(), Response::MethodNotAllowed_405.filename())
+                (Response::MethodNotAllowed.status_line(), Response::MethodNotAllowed.filename())
             }else{
-                (Response::NotFound_404.status_line(), Response::NotFound_404.filename())
+                (Response::NotFound.status_line(), Response::NotFound.filename())
             }
         },
-        None => (Response::BadRequest_400.status_line(), Response::BadRequest_400.filename())
+        None => (Response::BadRequest.status_line(), Response::BadRequest.filename())
     };
 
 
