@@ -12,6 +12,9 @@ impl std::error::Error for PoolCreationError {}
 
 */
 
+pub mod response;
+pub mod request;
+
 use std::{
     collections::HashMap, option, sync::{Arc, Mutex,mpsc}, thread,
 };

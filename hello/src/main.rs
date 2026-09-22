@@ -12,6 +12,10 @@ use hello::{ThreadPool,
     parse_header_line,
 };
 
+//enum files
+use hello::response::Response;
+use hello::request::Request;
+
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").expect("failed to bind to 127.0.0.1:7878");
 
@@ -29,41 +33,7 @@ fn main() {
 
 }
 
-enum Request{
-    GetIndex,
-    
-    Unknown(String),
 
-}
-
-impl Request{
-    fn request_path(&self) -> String{
-        match self{
-            Request::GetIndex => "GET / HTTP/1.1".to_string(),
-            Request::Unknown(path)=> path.to_string(),
-        }
-    }
-}
-
-enum Response{
-    Ok,
-    NotFound,
-}
-
-impl Response{
-    fn status_line(&self) -> &'static str{
-        match self{
-            Response::Ok => "HTTP/1.1 200 OK",
-            Response::NotFound => "HTTP/1.1 404 NOT FOUND",
-        }
-    }
-    fn filename(&self) -> &'static str{
-        match self{
-            Response::Ok=>"hello.html",
-            Response::NotFound => "404.html",
-        }
-    }
-}
 
 // closure for threads to run
 fn handle_connection(mut stream: TcpStream){
@@ -88,27 +58,29 @@ fn handle_connection(mut stream: TcpStream){
     //  should be result throw error and return?
     let request_line_str = match collect_request_line(&request_line){
         Some(well_formed_request_line) => well_formed_request_line,
-        None => "eroor, first line / request line".to_string(),
-
+        None => return //request_line missing method, path or version, cannot respond
     };
 
-    //if None, 400 error page
-    match parse_request_line(&request_line_str){
+    //resp: (status line, filename)
+    let resp: (&str, &str) = match parse_request_line(&request_line_str){
         Some((method, path, version)) => {
             if method == "GET" && path == "/"{
-                (Response::Ok.status_line(), Response::Ok.filename())
+                (Response::Ok_200.status_line(), Response::Ok_200.filename())
             }else if method != "GET"{
-                
+                (Response::MethodNotAllowed_405.status_line(), Response::MethodNotAllowed_405.filename())
+            }else{
+                (Response::NotFound_404.status_line(), Response::NotFound_404.filename())
             }
-        None 
-    }
+        },
+        None => (Response::BadRequest_400.status_line(), Response::BadRequest_400.filename())
+    };
 
 
     //let status_line = parse_request(request_line);
     let (status_line, filename) = if request_line == Request::GetIndex.request_path() {
-        (Response::Ok.status_line(), Response::Ok.filename())
+        (Response::Ok_200.status_line(), Response::Ok_200.filename())
     }else{
-        (Response::NotFound.status_line(), Response::NotFound.filename())
+        (Response::NotFound_404.status_line(), Response::NotFound_404.filename())
     };
 
     let contents = fs::read_to_string(filename).expect("failed to read html");
