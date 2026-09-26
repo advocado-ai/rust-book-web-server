@@ -1,3 +1,4 @@
+#[derive(Debug, PartialEq)]
 pub enum Response{
     Index,
     About,
