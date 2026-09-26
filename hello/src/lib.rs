@@ -13,6 +13,7 @@ impl std::error::Error for PoolCreationError {}
 */
 
 pub mod response;
+pub mod router;
 pub mod request;
 
 use std::{
@@ -240,7 +241,7 @@ mod tests{
     fn test_happy_path(){
         
         //TEST REQUEST LINE
-        let request_line = fs::read_to_string("/home/nginx/Documents/coding/rust-projects/rust-book-web-server/hello/tests/fixtures/happy_path.txt").expect("couldn't read happy path txt to string");
+        let request_line = fs::read_to_string("tests/fixtures/happy_path.txt").expect("couldn't read happy path txt to string");
 
         let request_first_line_string = collect_request_line(&request_line).unwrap();
 
