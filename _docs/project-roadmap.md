@@ -34,43 +34,86 @@ items above are done.
 
 ## Phase 1 — Sync server, closer to real HTTP
 
-1. **Real request parsing.** Replace `request_line == "GET / HTTP/1.1"`
+1. [x] **Real request parsing.** Replace `request_line == "GET / HTTP/1.1"`
    string comparison with actually parsing the method, path, HTTP version,
    and headers out of the request. Handle a request line that doesn't match
    the expected shape without panicking.
-2. **Routing.** Support more than one path. A small router — even just a
+   > Done on `phase1-1`. `parse_request_line` returns
+   > `Option<(String, String, String)>` (`None` on empty/malformed/too-few-
+   > or-too-many-fields/irregular-whitespace request lines — a request line
+   > must have exactly 3 non-empty space-separated fields). `collect_headers`
+   > + `parse_header_line` parse headers into a `HashMap<String, String>`.
+   > **Caveat:** headers are parsed and unit-tested in `lib.rs`, but
+   > `handle_connection` doesn't call `collect_headers` yet — nothing in
+   > production reads header values (no route depends on them yet). Method
+   > separators are exact single spaces (`.split(' ')`), matching RFC 9112 §3
+   > strictly rather than tolerating extra whitespace — a deliberate choice,
+   > not an oversight (see `weird_whitespace.txt` discussion).
+2. [x] **Routing.** Support more than one path. A small router — even just a
    `match` on `(method, path)` — that dispatches to different handler
    functions, plus a real fallback 404 for unmatched routes (not just one
    hardcoded alternate path).
-3. **Static file serving, generalized.** Serve arbitrary files from a
+   > Done on `phase1-1`. `handle_connection` matches `(method, path)` as an
+   > expression: `GET /` → 200, `GET /about` → 200, any other method → 405,
+   > anything else → 404. **Caveat:** only 2 real routes exist; the roadmap's
+   > "dispatches to different handler functions" is satisfied loosely (each
+   > arm picks a `Response`/`ResponseRoute` variant, not a separate function
+   > per route) — fine at this scale, would need revisiting if routes grow
+   > much past a handful.
+3. [ ] **Static file serving, generalized.** Serve arbitrary files from a
    `public/` directory based on the request path, with path traversal
    protection (reject `..` in the requested path — a real security concern,
    not just a toy detail).
-4. **Structured errors.** Replace `.unwrap()` calls in request handling with
+   > Not started. Filenames are still hardcoded per route via
+   > `ResponseRoute::filename()`. `path_traversal.txt` currently returns 404,
+   > but only because `/../../etc/passwd` doesn't match any known route —
+   > there's no general path→file lookup yet for `..` to actually threaten,
+   > and no deliberate traversal guard. Revisit together with this item.
+4. [~] **Structured errors.** Replace `.unwrap()` calls in request handling with
    real error handling — a request that fails to parse, or a file that
    doesn't exist, should produce a proper HTTP error response instead of
    crashing the worker thread. This is the same `Result`/custom-error-enum
    muscle from Rustlings' `13_error_handling`, applied to a real I/O path.
-5. **JSON request/response bodies.** Add at least one route that accepts or
+   > Partly done. Request-line/header parsing already returns `Option`
+   > instead of panicking (folded into item 1's work) — malformed input
+   > produces 400, not a crash. **Not done:** `fs::read_to_string(filename)`
+   > and `stream.write_all(...)` in `handle_connection` still use `.expect()`
+   > — a missing HTML file or a client disconnecting mid-write still panics
+   > and kills that worker thread. Also still `Option`-based, not
+   > `Result`/custom-error-enum as the item originally envisioned — no error
+   > *reason* is threaded through yet (e.g. "empty line" vs. "wrong arity"
+   > vs. "extra whitespace" all collapse to the same `None`).
+5. [ ] **JSON request/response bodies.** Add at least one route that accepts or
    returns JSON (`serde` + `serde_json`), rather than only serving static
    HTML. Good opportunity to practice `Deserialize`/`Serialize` derives.
-6. **Configuration.** Move the bind address, port, thread pool size, and
+   > Deferred per the 2026-09-03 scoping decision above.
+6. [ ] **Configuration.** Move the bind address, port, thread pool size, and
    static file root out of hardcoded constants and into a config source
    (CLI args via `clap`, and/or a config file, and/or env vars — `rust-cli-elt`
    already has env var and arg-parsing precedent to build on).
-7. **Logging.** Replace `println!`/`eprintln!` with the `log` crate + a
+   > Deferred per the 2026-09-03 scoping decision above.
+7. [ ] **Logging.** Replace `println!`/`eprintln!` with the `log` crate + a
    backend (`env_logger` is the simplest). Log each request's method, path,
    status, and duration.
-8. **Tests.** Unit tests for the request parser and router logic (pure
+   > Deferred per the 2026-09-03 scoping decision above.
+8. [~] **Tests.** Unit tests for the request parser and router logic (pure
    functions, no sockets needed). Integration tests that spin up the server
    on a test port and make real requests against it (`std::net` client side,
    or a lightweight HTTP client crate).
-9. **Keep-alive / connection reuse.** The book's version closes the
+   > Unit-test half done: 7 tests in `lib.rs` cover `parse_request_line`,
+   > `collect_headers`, `parse_header_line` against the fixtures in
+   > `hello/tests/fixtures/` (happy path, empty line, missing version,
+   > unknown method, weird whitespace, no trailing blank line, path
+   > traversal, many headers). **Not done:** no integration test yet that
+   > opens a real `TcpStream` against a running listener and asserts on the
+   > actual response — the unit tests validate parsing logic given correct
+   > input, not the socket-reading glue in `handle_connection` end to end.
+9. [ ] **Keep-alive / connection reuse.** The book's version closes the
    connection after one response. HTTP/1.1 keep-alive (reading multiple
    requests off the same `TcpStream`) is a meaningful step up in protocol
    correctness and a good forcing function for cleaner loop/state handling
    in `handle_connection`.
-10. **Graceful shutdown, revisited.** The book's `Drop`-based shutdown
+10. [ ] **Graceful shutdown, revisited.** The book's `Drop`-based shutdown
     doesn't handle an OS signal (Ctrl+C) — add a `ctrlc`-crate or
     signal-based trigger that stops accepting new connections and lets
     in-flight ones finish before exiting.
