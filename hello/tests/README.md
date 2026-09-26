@@ -12,7 +12,7 @@ Send one with `nc` (netcat) or `curl --raw`-ish equivalents. Easiest with `nc`:
 cd hello && cargo run
 
 # terminal 2, from the hello/ directory
-nc 127.0.0.1:7878 < tests/fixtures/empty_request_line.txt
+nc 127.0.0.1 7878 < tests/fixtures/empty_request_line.txt
 ```
 
 (`\r\n` line endings matter for real HTTP — these files use them
