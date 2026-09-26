@@ -5,6 +5,7 @@ use std::{
 };
 
 use hello::ThreadPool;
+use hello::response::Response;
 use hello::router::route;
 
 fn main() {
@@ -35,12 +36,25 @@ fn handle_connection(mut stream: TcpStream) {
 
     let response = route(&request_line);
 
-    let status_line = response.status_line();
-    let contents = fs::read_to_string(response.filename())
-    .expect("failed to read html file");
-    let length= contents.len();
-    
-    let http = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
+    let http = build_http_response(&response);
 
-    stream.write_all(http.as_bytes()).expect("failed to send response");
+    if let Err(e) = stream.write_all(http.as_bytes()) {
+        eprintln!("failed to send response: {e}");
+    }
+}
+
+fn build_http_response(response: &Response) -> String {
+    let contents = match fs::read_to_string(response.filename()) {
+        Ok(contents) => contents,
+        Err(e) => {
+            eprintln!("failed to read {}: {e}", response.filename());
+            return "HTTP/1.1 500 INTERNAL SERVER ERROR\r\nContent-Length: 0\r\n\r\n".to_string();
+        }
+    };
+
+    let length = contents.len();
+
+    format!(
+        "{}\r\nContent-Length: {length}\r\nContent-Type: text/html\r\n\r\n{contents}", response.status_line()
+    )
 }
